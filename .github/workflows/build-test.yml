@@ -1,0 +1,188 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2025 The Linux Foundation
+
+name: Build and Test
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly on Monday at 6 AM UTC
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Setup Go
+        # yamllint disable-line rule:line-length
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5  # v5
+        with:
+          go-version: '1.21'
+
+      - name: golangci-lint
+        # yamllint disable rule:line-length
+        uses: >-
+          golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84  # v6
+        with:
+          version: latest
+        # yamllint enable rule:line-length
+
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Run security audit
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/go-audit-action@a1b2c3d4e5f6789012345678901234567890abcd  # v1
+        with:
+          govulncheck: 'true'
+          gosec: 'true'
+          staticcheck: 'true'
+          upload-results: 'true'
+          fail-on-issues: 'false'
+
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go-version: ['1.20', '1.21', '1.22']
+        include:
+          - os: ubuntu-latest
+            go-version: '1.21'
+            coverage: true
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Run tests
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/go-test-action@b2c3d4e5f6789012345678901234567890abcdef  # v1
+        with:
+          go-version: ${{ matrix.go-version }}
+          coverage: ${{ matrix.coverage || 'false' }}
+          race: 'true'
+          upload-coverage: ${{ matrix.coverage || 'false' }}
+
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go-version: ['1.20', '1.21', '1.22']
+        include:
+          - os: ubuntu-latest
+            go-version: '1.21'
+            upload-artifacts: true
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Build application
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/go-build-action@c3d4e5f6789012345678901234567890abcdef01  # v1
+        with:
+          go-version: ${{ matrix.go-version }}
+          build-flags: '-ldflags="-s -w" -trimpath'
+          output-name: calculator-${{ matrix.os }}-${{ matrix.go-version }}
+          upload-artifact: ${{ matrix.upload-artifacts || 'false' }}
+          artifact-name: binaries-${{ github.sha }}
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Build application
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/go-build-action@c3d4e5f6789012345678901234567890abcdef01  # v1
+        with:
+          output-name: calculator
+
+      - name: Test calculator functionality
+        run: |
+          ./calculator add 5 3 | grep "Result: 8.00"
+          ./calculator subtract 10 4 | grep "Result: 6.00"
+          ./calculator multiply 6 7 | grep "Result: 42.00"
+          ./calculator divide 15 3 | grep "Result: 5.00"
+
+  release:
+    name: Release Build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [lint, audit, test, build, integration]
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: windows
+            goarch: arm64
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Build release binary
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/go-build-action@c3d4e5f6789012345678901234567890abcdef01  # v1
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        with:
+          build-flags: >-
+            -ldflags="-s -w -X main.version=${{ github.ref_name }}" -trimpath
+          output-name: calculator-${{ matrix.goos }}-${{ matrix.goarch }}
+          upload-artifact: 'true'
+          artifact-name: release-binaries-${{ github.ref_name }}

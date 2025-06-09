@@ -1,0 +1,45 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2025 The Linux Foundation
+
+ci:
+  autofix_commit_msg: |
+    Chore: pre-commit autofixes
+
+    Signed-off-by: pre-commit-ci[bot] <pre-commit-ci@users.noreply.github.com>
+  autoupdate_commit_msg: |
+    Chore: pre-commit autoupdate
+
+    Signed-off-by: pre-commit-ci[bot] <pre-commit-ci@users.noreply.github.com>
+
+repos:
+
+  - repo: https://github.com/golangci/golangci-lint
+    rev: eabc2638a66daf5bb6c6fb052a32fa3ef7b6600d  # frozen: v2.1.6
+    hooks:
+      - id: golangci-lint
+        args: ["--timeout=1m", "./..."]
+        pass_filenames: false
+
+  - repo: local
+    hooks:
+      - id: go-vet
+        name: go vet
+        entry: go vet ./...
+        language: system
+        pass_filenames: false
+      - id: errcheck
+        name: errcheck
+        entry: errcheck ./...
+        language: system
+        pass_filenames: false
+      - id: staticcheck
+        name: staticcheck
+        entry: staticcheck ./...
+        language: system
+        pass_filenames: false
+      - id: revive
+        name: revive
+        entry: revive -set_exit_status ./...
+        language: system
+        pass_filenames: false

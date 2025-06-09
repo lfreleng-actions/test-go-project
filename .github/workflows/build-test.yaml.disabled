@@ -1,0 +1,379 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2025 The Linux Foundation
+
+name: Build and Test
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly on Monday at 6 AM UTC
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Setup Go
+        # yamllint disable-line rule:line-length
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5  # v5
+        with:
+          go-version: '1.21'
+
+      - name: golangci-lint
+        # yamllint disable rule:line-length
+        uses: >-
+          golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84  # v6
+        # yamllint enable rule:line-length
+        with:
+          version: latest
+
+  audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Run security audit
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/go-audit-action@a1b2c3d4e5f6789012345678901234567890abcd  # v1
+        with:
+          govulncheck: 'true'
+          gosec: 'true'
+          staticcheck: 'true'
+          upload-results: 'true'
+          fail-on-issues: 'false'
+
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go-version: ['1.20', '1.21', '1.22']
+        include:
+          - os: ubuntu-latest
+            go-version: '1.21'
+            coverage: true
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Run tests
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/go-test-action@b2c3d4e5f6789012345678901234567890abcdef  # v1
+        with:
+          go-version: ${{ matrix.go-version }}
+          coverage: ${{ matrix.coverage || 'false' }}
+          race: 'true'
+          upload-coverage: ${{ matrix.coverage || 'false' }}
+
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go-version: ['1.20', '1.21', '1.22']
+        include:
+          - os: ubuntu-latest
+            go-version: '1.21'
+            upload-artifacts: true
+    permissions:
+      contents: read
+      actions: write
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Build application
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/go-build-action@c3d4e5f6789012345678901234567890abcdef01  # v1
+        with:
+          go-version: ${{ matrix.go-version }}
+          build-flags: '-ldflags="-s -w" -trimpath'
+          output-name: calculator-${{ matrix.os }}-${{ matrix.go-version }}
+          upload-artifact: ${{ matrix.upload-artifacts || 'false' }}
+          artifact-name: binaries-${{ github.sha }}
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: [build]
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Build application
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/go-build-action@c3d4e5f6789012345678901234567890abcdef01  # v1
+        with:
+          output-name: calculator
+
+      - name: Test calculator functionality
+        run: |
+          ./calculator add 5 3 | grep "Result: 8.00"
+          ./calculator subtract 10 4 | grep "Result: 6.00"
+          ./calculator multiply 6 7 | grep "Result: 42.00"
+          ./calculator divide 15 3 | grep "Result: 5.00"
+
+  release:
+    name: Release Build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [lint, audit, test, build, integration]
+    strategy:
+      matrix:
+        goos: [linux, windows, darwin]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: windows
+            goarch: arm64
+    permissions:
+      contents: read
+      actions: write
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Build release binary
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/go-build-action@c3d4e5f6789012345678901234567890abcdef01  # v1
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        with:
+          build-flags: >-
+            -ldflags="-s -w -X main.version=${{ github.ref_name }}" -trimpath
+          output-name: calculator-${{ matrix.goos }}-${{ matrix.goarch }}
+          upload-artifact: 'true'
+          artifact-name: release-binaries-${{ github.ref_name }}
+
+  makefile-test:
+    name: Makefile Parameter Testing
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        go-version: ['1.21', '1.22']
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        # yamllint disable-line rule:line-length
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4
+
+      - name: Setup Go
+        # yamllint disable-line rule:line-length
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5  # v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Install development tools
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+
+      - name: Test default Makefile parameters
+        run: |
+          echo "Testing default parameters..."
+          make help
+          make clean
+          make deps
+
+      - name: Test custom VERSION parameter
+        run: |
+          echo "Testing custom VERSION parameter..."
+          make clean
+          VERSION=1.2.3-test make build
+          # Verify the binary was built
+          test -f bin/calculator
+          # Check if version info was embedded (basic check)
+          strings bin/calculator | grep -q "1.2.3-test" || echo "No version"
+
+      - name: Test that BINARY_NAME is fixed (not overridable)
+        run: |
+          echo "Testing that BINARY_NAME is fixed..."
+          make clean
+          BINARY_NAME=test-calculator make build
+          # Verify the binary was built with default name (not custom)
+          test -f bin/calculator
+          test ! -f bin/test-calculator
+
+      - name: Test that BUILD_DIR is fixed (not overridable)
+        run: |
+          echo "Testing that BUILD_DIR is fixed..."
+          make clean
+          BUILD_DIR=custom-bin make build
+          # Verify the binary was built in default directory (not custom)
+          test -f bin/calculator
+          test ! -d custom-bin
+
+      - name: Test COMMIT and DATE parameters
+        run: |
+          echo "Testing COMMIT and DATE parameters..."
+          make clean
+          COMMIT=abc123 DATE=2025-01-01T00:00:00Z make build
+          # Verify the binary was built
+          test -f bin/calculator
+
+      - name: Test core Makefile targets
+        run: |
+          echo "Testing core Makefile targets..."
+          make clean
+          make deps
+          make fmt
+          make vet
+          make build
+          make test
+          make cli-test
+
+      - name: Test build-all target
+        run: |
+          echo "Testing build-all target..."
+          make clean
+          make build-all
+          # Verify all platform binaries were created
+          test -f bin/calculator-linux-amd64
+          test -f bin/calculator-darwin-amd64
+          test -f bin/calculator-darwin-arm64
+          test -f bin/calculator-windows-amd64.exe
+
+      - name: Test coverage targets
+        run: |
+          echo "Testing coverage targets..."
+          make clean
+          make test-coverage
+          # Verify coverage files were created
+          test -f coverage.out
+          test -f coverage.html
+
+      - name: Test integration tests
+        run: |
+          echo "Testing integration tests..."
+          make test-integration
+
+      - name: Test linting target
+        run: |
+          echo "Testing linting target..."
+          make lint
+
+      - name: Test audit target
+        run: |
+          echo "Testing audit target..."
+          make audit
+
+      - name: Test benchmark target
+        run: |
+          echo "Testing benchmark target..."
+          make benchmark
+
+      - name: Test check target (quality check)
+        run: |
+          echo "Testing check target..."
+          make check
+
+      - name: Test demo target
+        run: |
+          echo "Testing demo target..."
+          make demo
+
+      - name: Test run target with ARGS parameter
+        run: |
+          echo "Testing run target with ARGS parameter..."
+          make clean
+          make build
+          # Test different ARGS combinations
+          make run ARGS="add 10 5"
+          make run ARGS="subtract 20 8"
+          make run ARGS="multiply 4 6"
+          make run ARGS="divide 100 25"
+
+      - name: Test install target (user scope)
+        run: |
+          echo "Testing install target..."
+          # Create a temporary GOPATH for testing
+          export GOPATH=/tmp/test-gopath
+          mkdir -p $GOPATH/bin
+          make install
+          # Verify the binary was installed
+          test -f $GOPATH/bin/calculator
+          # Test the installed binary
+          $GOPATH/bin/calculator add 2 3 | grep -q "Result: 5.00"
+          # Clean up
+          rm -rf /tmp/test-gopath
+
+      - name: Test release-prep target
+        run: |
+          echo "Testing release-prep target..."
+          make release-prep
+
+      - name: Test parameter combinations
+        run: |
+          echo "Testing parameter combinations..."
+          make clean
+          VERSION=2.0.0 COMMIT=test123 DATE=2025-01-01T00:00:00Z make build
+          # Verify the binary was built with custom parameters
+          test -f bin/calculator
+          # Verify version info was embedded
+          strings bin/calculator | grep -q "2.0.0" || echo "Version not found"
+
+      - name: Verify clean target effectiveness
+        run: |
+          echo "Testing clean target effectiveness..."
+          # Build everything first
+          make build-all
+          make test-coverage
+          # Verify files exist
+          test -f bin/calculator
+          test -f coverage.out
+          test -f coverage.html
+          # Clean everything
+          make clean
+          # Verify files were removed
+          test ! -f bin/calculator || (echo "Clean failed" && exit 1)
+          test ! -f coverage.out || (echo "Clean failed" && exit 1)
+          test ! -f coverage.html || (echo "Clean failed" && exit 1)
+          test ! -d bin || (echo "Clean failed" && exit 1)

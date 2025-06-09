@@ -2,6 +2,7 @@
 # SPDX-FileCopyrightText: 2025 The Linux Foundation
 
 # Binaries for programs and plugins
+bin/
 *.exe
 *.exe~
 *.dll

@@ -19,8 +19,14 @@ func main() {
 
 	operation := os.Args[1]
 	var a, b float64
-	fmt.Sscanf(os.Args[2], "%f", &a)
-	fmt.Sscanf(os.Args[3], "%f", &b)
+	if _, err := fmt.Sscanf(os.Args[2], "%f", &a); err != nil {
+		fmt.Printf("Error parsing first number: %v\n", err)
+		os.Exit(1)
+	}
+	if _, err := fmt.Sscanf(os.Args[3], "%f", &b); err != nil {
+		fmt.Printf("Error parsing second number: %v\n", err)
+		os.Exit(1)
+	}
 
 	calc := calculator.New()
 	var result float64

@@ -22,8 +22,8 @@ vendor/
 # Go workspace file
 go.work
 
-# Binary output
-calculator
+# Binary output (root-anchored so pkg/calculator stays tracked)
+/calculator
 
 # macOS
 .DS_Store

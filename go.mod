@@ -3,7 +3,7 @@
 
 module github.com/lfreleng-actions/test-go-project
 
-go 1.21
+go 1.25
 
 require github.com/stretchr/testify v1.8.4
 

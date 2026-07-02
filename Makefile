@@ -85,7 +85,7 @@ lint:
 		golangci-lint run; \
 	else \
 		echo "golangci-lint not found, installing..."; \
-		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+		$(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
 		golangci-lint run; \
 	fi
 
@@ -107,7 +107,7 @@ audit:
 		govulncheck ./...; \
 	else \
 		echo "govulncheck not found, installing..."; \
-		go install golang.org/x/vuln/cmd/govulncheck@latest; \
+		$(GOCMD) install golang.org/x/vuln/cmd/govulncheck@latest; \
 		govulncheck ./...; \
 	fi
 	@echo "Running gosec..."
@@ -115,7 +115,7 @@ audit:
 		gosec ./...; \
 	else \
 		echo "gosec not found, installing..."; \
-		go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest; \
+		$(GOCMD) install github.com/securego/gosec/v2/cmd/gosec@latest; \
 		gosec ./...; \
 	fi
 	@echo "Running staticcheck..."
@@ -123,7 +123,7 @@ audit:
 		staticcheck ./...; \
 	else \
 		echo "staticcheck not found, installing..."; \
-		go install honnef.co/go/tools/cmd/staticcheck@latest; \
+		$(GOCMD) install honnef.co/go/tools/cmd/staticcheck@latest; \
 		staticcheck ./...; \
 	fi
 
@@ -177,10 +177,10 @@ run: build
 # Development setup
 dev-setup:
 	@echo "Setting up development environment..."
-	$(GOGET) -u github.com/golangci/golangci-lint/cmd/golangci-lint
-	$(GOGET) -u golang.org/x/vuln/cmd/govulncheck
-	$(GOGET) -u github.com/securecodewarrior/gosec/v2/cmd/gosec
-	$(GOGET) -u honnef.co/go/tools/cmd/staticcheck
+	$(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	$(GOCMD) install golang.org/x/vuln/cmd/govulncheck@latest
+	$(GOCMD) install github.com/securego/gosec/v2/cmd/gosec@latest
+	$(GOCMD) install honnef.co/go/tools/cmd/staticcheck@latest
 	$(GOMOD) tidy
 
 # Benchmark tests

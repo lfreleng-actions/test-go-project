@@ -44,5 +44,5 @@ go build -o calculator main.go
 
 ## Dependencies
 
-- Go 1.21+
+- Go 1.25+
 - github.com/stretchr/testify for testing

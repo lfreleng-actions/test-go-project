@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 The Linux Foundation
 
-// Package calculator provides basic arithmetic operations for the
-// test fixture used by lfreleng-actions CI workflows and actions.
+// Package calculator provides basic arithmetic operations.
 package calculator
 
 import "errors"

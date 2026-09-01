@@ -46,3 +46,20 @@ go build -o calculator main.go
 
 - Go 1.25+
 - github.com/stretchr/testify for testing
+
+## Fixture properties
+
+Some of what this repository declares exists for the workflows that
+scan it rather than for the project itself. Please do not "tidy" these
+away.
+
+- **`go.mod` carries a `toolchain` directive pinned below the `go`
+  directive's resolution.** `go 1.25` resolves to the latest 1.25.x,
+  while `toolchain go1.25.0` resolves to exactly 1.25.0. Tooling that
+  reads `go.mod` must prefer `toolchain`, and consumers can only prove
+  they do by comparing which of the two they ended up with. Raising
+  the pin to match the `go` directive, or dropping the line as
+  redundant, silently disables that check.
+  See [security-workflows#75][sw75].
+
+[sw75]: https://github.com/lfreleng-actions/security-workflows/issues/75

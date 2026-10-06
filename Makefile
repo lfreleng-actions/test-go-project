@@ -20,6 +20,10 @@ GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 GOMOD=$(GOCMD) mod
 
+# golangci-lint v2 lives under the /v2 module path; the unversioned path
+# stops at v1.64.8. Pinned so 'make lint' results are reproducible.
+GOLANGCI_LINT_VERSION=v2.14.0
+
 .PHONY: all build clean test deps lint fmt vet run help install cli-test audit
 
 # Default target
@@ -84,8 +88,8 @@ lint:
 	@if command -v golangci-lint >/dev/null 2>&1; then \
 		golangci-lint run; \
 	else \
-		echo "golangci-lint not found, installing..."; \
-		$(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
+		echo "golangci-lint not found, installing $(GOLANGCI_LINT_VERSION)..."; \
+		$(GOCMD) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
 		golangci-lint run; \
 	fi
 
@@ -177,7 +181,7 @@ run: build
 # Development setup
 dev-setup:
 	@echo "Setting up development environment..."
-	$(GOCMD) install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	$(GOCMD) install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	$(GOCMD) install golang.org/x/vuln/cmd/govulncheck@latest
 	$(GOCMD) install github.com/securego/gosec/v2/cmd/gosec@latest
 	$(GOCMD) install honnef.co/go/tools/cmd/staticcheck@latest

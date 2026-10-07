@@ -49,7 +49,10 @@ The linting setup follows
 Install the hooks with `prek install`. The Go hooks need a Go toolchain
 and [golangci-lint](https://golangci-lint.run/welcome/install/) v2 on
 `PATH`; `make dev-setup` installs the pinned version. Those hooks are
-unavailable on pre-commit.ci, so it skips them.
+unavailable on pre-commit.ci, so it skips them. Instead, the Standalone
+Linting workflow runs golangci-lint in CI from
+`go-linting/pre-commit-config.yaml`. That workflow pins the file's
+SHA-256 digest, so update both together.
 
 ## Dependencies
 

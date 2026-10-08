@@ -1,0 +1,43 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2025 The Linux Foundation
+
+# Thin caller for the reusable linting workflow in generic-workflows,
+# run against go-linting/pre-commit-config.yaml as a remote
+# configuration. This exercises the reusable's config_url integrity
+# pinning on a real project, and runs golangci-lint in CI, which
+# pre-commit.ci cannot.
+#
+# The URL names the repository and commit under test rather than a
+# fixed branch, so a pull request changing that file is linted with
+# its own copy. config_sha256 pins the content: change the file and
+# its digest together (sha256sum go-linting/pre-commit-config.yaml),
+# or this check fails.
+name: 'Standalone Linting 🧹'
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+permissions: {}
+
+concurrency:
+  group: 'standalone-linting-${{ github.ref }}'
+  cancel-in-progress: false
+  queue: max
+
+jobs:
+  linting:
+    name: 'Linting'
+    permissions:
+      contents: read
+    # yamllint disable-line rule:line-length
+    uses: lfreleng-actions/generic-workflows/.github/workflows/linting.yaml@0ed9c16d59a3ff92afad23a7c1aba3ab61238b87  # v0.4.3
+    with:
+      # yamllint disable-line rule:line-length
+      config_url: 'https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/go-linting/pre-commit-config.yaml'
+      # yamllint disable-line rule:line-length
+      config_sha256: '5e472d6a2c2ff93031ce4db8781d85d6330872ef39905a5a0d59ddd12796831b'
+      export_github_token: false

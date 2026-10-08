@@ -1,0 +1,56 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+
+# golangci-lint configuration, v2 schema, adopted from actions-template.
+
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - goconst
+    - gocyclo
+    - gosec
+    - govet
+    - ineffassign
+    - misspell
+    - nakedret
+    - revive
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+
+  settings:
+    errcheck:
+      check-blank: true
+    gocyclo:
+      min-complexity: 25
+    govet:
+      enable:
+        - shadow
+    misspell:
+      locale: US
+    gosec:
+      excludes:
+        - G104
+
+  exclusions:
+    rules:
+      - path: "_test\\.go$"
+        linters:
+          - gosec
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

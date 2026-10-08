@@ -42,6 +42,18 @@ go tool cover -html=coverage.out
 go build -o calculator main.go
 ```
 
+## Linting
+
+The linting setup follows
+[actions-template](https://github.com/lfreleng-actions/actions-template).
+Install the hooks with `prek install`. The Go hooks need a Go toolchain
+and [golangci-lint](https://golangci-lint.run/welcome/install/) v2 on
+`PATH`; `make dev-setup` installs the pinned version. Those hooks are
+unavailable on pre-commit.ci, so it skips them. Instead, the Standalone
+Linting workflow runs golangci-lint in CI from
+`go-linting/pre-commit-config.yaml`. That workflow pins the file's
+SHA-256 digest, so update both together.
+
 ## Dependencies
 
 - Go 1.25+
@@ -55,11 +67,12 @@ away.
 
 - **`go.mod` carries a `toolchain` directive pinned below the `go`
   directive's resolution.** `go 1.25` resolves to the latest 1.25.x,
-  while `toolchain go1.25.0` resolves to exactly 1.25.0. Tooling that
-  reads `go.mod` must prefer `toolchain`, and consumers can only prove
-  they do by comparing which of the two they ended up with. Raising
-  the pin to match the `go` directive, or dropping the line as
-  redundant, silently disables that check.
+  while `toolchain go1.25.0` resolves to 1.25.0 and nothing later.
+  Tooling that reads `go.mod` must prefer `toolchain`, and comparing
+  which of the two a consumer ended up with is the sole way to prove
+  that it does. Raising the pin to match the `go` directive, or
+  dropping the line as redundant, disables that check with no
+  warning.
   See [security-workflows#75][sw75].
 
 [sw75]: https://github.com/lfreleng-actions/security-workflows/issues/75

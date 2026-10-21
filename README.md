@@ -56,7 +56,7 @@ SHA-256 digest, so update both together.
 
 ## Dependencies
 
-- Go 1.25+
+- Go 1.26+
 - github.com/stretchr/testify for testing
 
 ## Fixture properties
@@ -65,14 +65,18 @@ Some of what this repository declares exists for the workflows that
 scan it rather than for the project itself. Please do not "tidy" these
 away.
 
-- **`go.mod` carries a `toolchain` directive pinned below the `go`
-  directive's resolution.** `go 1.25` resolves to the latest 1.25.x,
-  while `toolchain go1.25.0` resolves to 1.25.0 and nothing later.
-  Tooling that reads `go.mod` must prefer `toolchain`, and comparing
-  which of the two a consumer ended up with is the sole way to prove
-  that it does. Raising the pin to match the `go` directive, or
-  dropping the line as redundant, disables that check with no
-  warning.
+- **`go.mod` carries a `toolchain` directive that resolves to a
+  later release than the `go` directive.** `go 1.26.0` resolves to
+  1.26.0, while `toolchain go1.26.10` resolves to 1.26.10. Tooling
+  that reads `go.mod` must prefer `toolchain`, and comparing which of
+  the two a consumer ended up with is the sole way to prove that it
+  does. Setting the pin to the release the `go` directive resolves
+  to, or dropping the line as redundant, disables that check with no
+  warning. Keep `toolchain` on the newest patch of a supported
+  release line: a stale pin misses every later security fix, as Go
+  1.25.0 missed CVE-2026-111943. Keep it on the same line as `go`,
+  too: golangci-lint targets the `toolchain` release, so a newer line
+  would demand a linter built with that newer Go.
   See [security-workflows#75][sw75].
 
 [sw75]: https://github.com/lfreleng-actions/security-workflows/issues/75
